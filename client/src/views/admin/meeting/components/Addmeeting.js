@@ -6,11 +6,14 @@ import Spinner from 'components/spinner/Spinner';
 import dayjs from 'dayjs';
 import { useFormik } from 'formik';
 import { useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { LiaMousePointerSolid } from 'react-icons/lia';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { MeetingSchema } from 'schema';
 import { getApi, postApi } from 'services/api';
+import { fetchLeadData } from '../../../../redux/slices/leadSlice';
+import { fetchContactData } from '../../../../redux/slices/contactSlice';
 
 const AddMeeting = (props) => {
     const { onClose, isOpen, setAction, from, fetchData, view } = props
@@ -21,7 +24,7 @@ const AddMeeting = (props) => {
     const [leadModelOpen, setLeadModel] = useState(false);
     const todayTime = new Date().toISOString().split('.')[0];
     const leadData = useSelector((state) => state?.leadData?.data);
-
+    const dispatch = useDispatch();
 
     const user = JSON.parse(localStorage.getItem('user'))
 
@@ -43,21 +46,48 @@ const AddMeeting = (props) => {
         initialValues: initialValues,
         validationSchema: MeetingSchema,
         onSubmit: (values, { resetForm }) => {
-            
+            AddData();
+            resetForm();
         },
     });
     const { errors, touched, values, handleBlur, handleChange, handleSubmit, setFieldValue } = formik
 
     const AddData = async () => {
-
+        try {
+            setIsLoding(true)
+            let response = await postApi('api/meeting/add', values)
+            if (response.status === 200) {
+                props.onClose();
+                fetchData(1)
+            }
+        } catch (e) {
+            console.log(e);
+        }
+        finally {
+            setIsLoding(false)
+        }
     };
 
     const fetchAllData = async () => {
-        
+        try {
+            setIsLoding(true)
+            const resultLeads = await dispatch(fetchLeadData())
+            setLeadData(resultLeads?.payload?.data);
+
+            const resultContacts = await dispatch(fetchContactData())
+            setContactData(resultContacts?.payload?.data);
+            
+            setIsLoding(false)
+        } catch (e) {
+            console.log(e);
+        }
+        finally {
+            setIsLoding(false)
+        }
     }
 
     useEffect(() => {
-
+        fetchAllData()
     }, [props.id, values.related])
 
     const extractLabels = (selectedItems) => {
